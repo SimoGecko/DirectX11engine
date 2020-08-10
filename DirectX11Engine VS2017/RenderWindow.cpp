@@ -1,6 +1,6 @@
-#include "RenderWindow.h"
+#include "WindowContainer.h"
 
-bool RenderWindow::Initialize(HINSTANCE hInstance, std::string window_title, std::string window_class, int width, int height)
+bool RenderWindow::Initialize(WindowContainer* pWindowContainer, HINSTANCE hInstance, std::string window_title, std::string window_class, int width, int height)
 {
 	this->hInstance = hInstance;
 	this->width = width;
@@ -22,7 +22,7 @@ bool RenderWindow::Initialize(HINSTANCE hInstance, std::string window_title, std
 		NULL, // handle to parent
 		NULL, // handle to menu or child window
 		this->hInstance, // handle to the module instance
-		nullptr // param to create window
+		pWindowContainer // param to create window
 	);
 
 	if (this->handle == NULL)
@@ -78,11 +78,63 @@ RenderWindow::~RenderWindow()
 	}
 }
 
+LRESULT CALLBACK HandleMsgRedirect(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	switch (uMsg)
+	{
+		// all other messages
+	case WM_CLOSE:
+		DestroyWindow(hwnd);
+		return 0;
+	default:
+	{
+		// retrieve ptr to window class
+		WindowContainer* const pWindow = reinterpret_cast<WindowContainer*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+		// forward message to window class handler
+		return pWindow->WindowProc(hwnd, uMsg, wParam, lParam);
+	}
+	}
+}
+
+LRESULT CALLBACK HandleMessageSetup(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	switch (uMsg)
+	{
+	//case WM_CHAR: // alphanumeric stuff, also gets it capitalized
+	//{
+	//	unsigned char letter = static_cast<unsigned char>(wParam);
+	//	return 0;
+	//}
+	//case WM_KEYDOWN: // gets the keycode of the key
+	//{
+	//	unsigned char keycode = static_cast<unsigned char>(wParam);
+	//	return 0;
+	//}
+	case WM_NCCREATE:
+	{
+		//OutputDebugStringA("The window was created.\n");
+		const CREATESTRUCTW* const pCreate = reinterpret_cast<CREATESTRUCTW*>(lParam);
+		WindowContainer *pWindow = reinterpret_cast<WindowContainer*>(pCreate->lpCreateParams);
+		if (pWindow == nullptr) // sanity check
+		{
+			ErrorLogger::Log("Critical Error: Pointer to window container is null during WM_NCCREATE.");
+			exit(-1);
+		}
+		SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pWindow));
+		SetWindowLongPtr(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(HandleMsgRedirect));
+		return pWindow->WindowProc(hwnd, uMsg, wParam, lParam);
+		//return DefWindowProc(hwnd, uMsg, wParam, lParam);
+	}
+	default:
+		return DefWindowProc(hwnd, uMsg, wParam, lParam);
+	}
+}
+
 void RenderWindow::RegisterWindowClass()
 {
 	WNDCLASSEX wc;
 	wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-	wc.lpfnWndProc = DefWindowProc;
+	wc.lpfnWndProc = HandleMessageSetup;
 	wc.cbClsExtra = 0;
 	wc.cbWndExtra = 0;
 	wc.hInstance = this->hInstance;
