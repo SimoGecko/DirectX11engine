@@ -3,7 +3,14 @@
 bool Engine::Initialize(HINSTANCE hInstance, std::string window_title, std::string window_class, int width, int height)
 {
 	//keyboard.EnableAutoRepeatChars();
-	return this->render_window.Initialize(this, hInstance, window_title, window_class, width, height);
+	if (! render_window.Initialize(this, hInstance, window_title, window_class, width, height))
+	{
+		return false;
+	}
+	if (!gfx.Initialize(render_window.GetHWND(), width, height))
+	{
+		return false;
+	}
 	// initialize graphics for directX stuff
 }
 
@@ -61,5 +68,18 @@ void Engine::Update()
 				OutputDebugStringA("MouseWheelDown\n");
 			}
 		}
+		{
+			if (me.GetType() == MouseEvent::EventType::RAW_MOVE)
+			{
+				char c[64];
+				sprintf_s(c, "X: %d, Y: %d\n", me.GetPosX(), me.GetPosY());
+				OutputDebugStringA(c);
+			}
+		}
 	}
+}
+
+void Engine::RenderFrame()
+{
+	gfx.RenderFrame();
 }

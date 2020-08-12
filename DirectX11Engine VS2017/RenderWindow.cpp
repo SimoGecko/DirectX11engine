@@ -44,7 +44,7 @@ bool RenderWindow::ProcessMessages()
 	// handle the windows messages
 	MSG msg;
 	ZeroMemory(&msg, sizeof(MSG));
-	if (PeekMessage( // PeekMessage is non-blocking
+	while (PeekMessage( // PeekMessage is non-blocking
 		&msg,
 		this->handle,
 		0, // minimum filter value
@@ -67,6 +67,11 @@ bool RenderWindow::ProcessMessages()
 		}
 	}
 	return true;
+}
+
+HWND RenderWindow::GetHWND() const
+{
+	return handle;
 }
 
 RenderWindow::~RenderWindow()
